@@ -99,16 +99,16 @@ def handle_training_conversations(args):
     save_path_train = save_dir.joinpath(f'export{begin_name_part}{end_name_part}_train.json')
     save_path_valid = save_dir.joinpath(f'export{begin_name_part}{end_name_part}_valid.json')
 
-    convs = util.export_training_conversations(args.begin, args.end, args.reveal_sides)
+    convs = util.export_training_conversations(args.begin, args.end, args.reveal_sides, args.reveal_ids)
     convs_num_train = round(len(convs) * args.rate)
     convs_train = convs[:convs_num_train]
     convs_valid = convs[convs_num_train:]
 
     with open(save_path_train, 'w') as f_train:
-        json.dump(convs_train, f_train)
+        json.dump(convs_train, f_train, indent=2)
 
     with open(save_path_valid, 'w') as f_valid:
-        json.dump(convs_valid, f_valid)
+        json.dump(convs_valid, f_valid, indent=2)
 
     print(f'Training and validation datasets for {begin_name_part[1:]} {end_name_part[1:]} saved in {save_dir}')
 
@@ -159,7 +159,6 @@ def handle_export_conversations(args):
 
 
 def handle_bot_scores(args):
-    # TODO: Refactor hardcode botname dict
     save_dir = Path(args.target).expanduser().resolve()
     save_dir = save_dir.joinpath('bot_scores')
 
@@ -170,25 +169,10 @@ def handle_bot_scores(args):
     end_name_part = '' if args.end is None else f'_{args.end}'
     save_path = save_dir.joinpath(f'bot_scores{begin_name_part}{end_name_part}.json')
 
-    scores_raw = util.export_bot_scores(args.begin, args.end)
-
-    bot_names = {
-        "28f4ed5c-405b-4b46-96e7-b77de7782b75": 'baseline',
-        "24480ac9-3c3d-471a-8e24-6215f9ee6dae": 'tensorborne',
-        "53f1d818-b564-486e-ae80-bea8d91465b1": 'NEUROBOTICS',
-        "105561dd-4850-45b4-94be-e767ad48c97a": 'Lost in conversetion',
-        "ad558a10-8a7e-48ac-95a2-3cc9aa318dbd": 'infinity',
-        "00a7a39a-466e-4262-b4d1-ea92f98574d6": 'loopAI',
-        "31f1fbba-624e-4d57-ad5e-f667053b95f1": 'Sonic'
-    }
-
-    scores = {}
-    for bot_id in scores_raw.keys():
-        scores_raw[bot_id]['bot_id'] = bot_id
-        scores[bot_names[bot_id]] = scores_raw[bot_id]
+    scores_raw = util.export_bot_scores(args.begin, args.end, args.daily_stats)
 
     with open(save_path, 'w') as f_scores:
-        json.dump(scores, f_scores)
+        json.dump(scores_raw, f_scores, indent=2)
 
     print(f'Bot scores for {begin_name_part[1:]} {end_name_part[1:]} saved in {save_dir}')
 
@@ -386,6 +370,10 @@ def setup_argparser():
                                         '--reveal-sides',
                                         action='store_true',
                                         help='Reveal bot/human identity of dialog participants. Default is %(default)s')
+    training_conversations.add_argument('-i',
+                                        '--reveal-ids',
+                                        action='store_true',
+                                        help='Reveal identity of dialog participants. Default is %(default)s')
     training_conversations.set_defaults(func=handle_training_conversations)
 
     export_conversations = subparsers.add_parser('export-dialogs',
@@ -427,6 +415,10 @@ def setup_argparser():
                             type=str,
                             default='~/router_bot_export',
                             help='Target dir for export. Default is %(default)s')
+    bot_scores.add_argument('-d',
+                            '--daily-stats',
+                            action='store_true',
+                            help='Show daily statistics in report. Default is %(default)s')
     bot_scores.set_defaults(func=handle_bot_scores)
 
     export_parlai = subparsers.add_parser('export-parlai',
